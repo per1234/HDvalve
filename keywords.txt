@@ -1,0 +1,17 @@
+# Syntax Coloring Map For ModbusIP
+
+# Datatypes (KEYWORD1)
+Valve    	KEYWORD1
+
+# Methods and Functions (KEYWORD2)
+init        KEYWORD2
+control		KEYWORD2
+lastON      KEYWORD2
+lastOFF		KEYWORD2
+setTime		KEYWORD2
+setRate		KEYWORD2
+Status		KEYWORD2
+Click		KEYWORD2
+Flow		KEYWORD2
+
+# Constants (LITERAL1)

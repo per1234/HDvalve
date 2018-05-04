@@ -8,120 +8,83 @@ Created by Tomat7, October 2017.
 
 Valve::Valve(int pin)
 {
-#ifdef USE_PORTB_ONLY
-	_pin = pin-8;
-	DDRB |= (1 << _pin);
-#else
-	_pin = pin;
-	pinMode(_pin, OUTPUT);
-/*
-	if (_pin < 8) { 
-		_pin = pin;
-		_usePortD = true;
-	} else
-	{ 
-		_pin = pin-8;
-	}
-*/	
-#endif
-
+	pin_ = pin;
+	pinMode(pin_, OUTPUT);
 	Flow = false;
-	_OnTime = 0;
-	_OffTime = 0;
+	msOpen_ = 0;
+	msClose_ = 65535;
 	Clicks = 0;
 }
 
-void Valve::init(int OffTime, byte OnTime)
+void Valve::init()
 {
-	_OnTime = OnTime;
-	_OffTime = OffTime;
+	//msOpen_ = 0;
+	//msClose_ = 65535;
 	Serial.print(F(LIBVERSION));
-	Serial.println(_pin);
+	Serial.println(pin_);
 }
 
 void Valve::control()
 {
-	//unsigned long msNow = millis(); // текущее время в миллисекундах
-	if ((_OnTime == 0) || (_OffTime == 0)) // не щёлкать совсем!!
+	if ((msOpen_ < 10) || (msClose_ > 60000)) // не щёлкать совсем!!
 	{
 		Flow = false; // выключаем
-		_setState();
-		return;
+		setState_();
 	}
-
-	unsigned long msPassed = millis() - _lastMillis;
-	// выясняем не настал ли момент сменить состояние клапана
-	if ((Flow) && (msPassed >= _OnTime))
+	else if  ((msClose_ < 10) || (msOpen_ == 255))	// открываем на полную !!
 	{
-		Flow = false; // выключаем
-		_setState();
-		lastON = msPassed;
-		Serial.print("on: ");
-		Serial.println(msPassed);
-		//Serial.println(currentMillis);
-	}
-	else if ((!Flow) && (msPassed >= _OffTime))
+		Flow = true;	// ** СЛИВ!! ** 
+		setState_();
+		#ifdef DEBUG2
+		Serial.println("drain! ");
+		#endif
+	} 
+	else
 	{
-		Flow = true; // включаем
-		_setState();
-		Clicks++;
-		lastOFF = msPassed;
-		Serial.print("off: ");
-		Serial.println(msPassed);
+		unsigned long msPassed = millis() - lastMillis_;
+		// выясняем не настал ли момент сменить состояние клапана
+		if ((Flow) && (msPassed >= msOpen_))
+		{
+			Flow = false; // выключаем
+			setState_();
+			lastON = msPassed;
+			#ifdef DEBUG3
+			Serial.print("on: ");
+			Serial.println(msPassed);
+			#endif
+		}
+		else if ((!Flow) && (msPassed >= msClose_))
+		{
+			Flow = true; // включаем
+			setState_();
+			Clicks++;
+			lastOFF = msPassed;
+			#ifdef DEBUG3
+			Serial.print("off: ");
+			Serial.println(msPassed);
+			#endif
+		}
 	}
 	return;
 }
 
+
 void Valve::setTime(int OffTime)
 {
-	_OffTime = OffTime;
+	msClose_ = OffTime;
 }
 
-
-void Valve::_setState()
-{
-#ifdef USE_PORTB_ONLY
-	//if (Flow) 	{ PORTB |= _BV(_pin); }
-	//else 		{ PORTB &= ~_BV(_pin); }
-	if (Flow) 	{ PORTB |= 1<<_pin; }
-	else 		{ PORTB &= ~(1<<(_pin)); }
-/*	if (Flow)
-	{
-		if (_usePortD) 	{ PORTD |= 1<<_pin; }
-		else 			{ PORTB |= 1<<_pin; }
-	} else
-	{
-		if (_usePortD) 	{ PORTD &= ~(1<<_pin); }
-		else 			{ PORTB &= ~(1<<(_pin)); }
-	}
-*/
-#else
-	digitalWrite(_pin, Flow); // реализуем новое состояние
-#endif
-
-	_lastMillis = millis(); // запоминаем момент времени
-}
-
-
-/*
 void Valve::setTime(int OffTime, byte OnTime)
 {
-	_OnTime = OnTime;
-	_OffTime = OffTime;
+	msOpen_ = OnTime;
+	msClose_ = OffTime;
 }
-*/
 
-/*
-mlPerHour: желаемая скорость отбора мл/час
-mlPerFlow: миллилитров-за-один-клик-клапана * 1000
-некая расчетно-экспериментальная величина дл¤ каждого клапана
-постоянная при фиксированных OnTime и высоте подвеса самого клапана!
-************* !!!! не готово !!!   *********************************
-
-void Valve::setRate(int mlPerHour, int mlPer1000Flow)
+void Valve::setState_()
 {
-	_OffTime = round((3600 * mlPer1000Flow / mlPerHour) - _OnTime);
-	//_OnTime = OnTime;
+	digitalWrite(pin_, Flow); // реализуем новое состояние
+	lastMillis_ = millis(); // запоминаем момент времени
 }
-*/
+
+
 
